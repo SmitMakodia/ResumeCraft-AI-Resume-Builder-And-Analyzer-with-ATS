@@ -1,6 +1,7 @@
 import React from 'react';
 import { User, Briefcase, GraduationCap, Code, FolderGit2, FileText, Palette, MonitorCheck } from 'lucide-react';
 import { cn } from '../ui/Button';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
   activeSection: string;
@@ -17,6 +18,8 @@ const sections = [
 ];
 
 export const SectionSidebar: React.FC<Props> = ({ activeSection, onSectionChange }) => {
+  const navigate = useNavigate();
+
   return (
     <div className="w-64 bg-white border-r border-gray-200 h-full flex flex-col">
       <div className="p-4 border-b border-gray-200">
@@ -56,7 +59,7 @@ export const SectionSidebar: React.FC<Props> = ({ activeSection, onSectionChange
             Design & Formatting
           </button>
           <button
-             onClick={() => window.open('/analyzer', '_blank')}
+             onClick={() => navigate('/analyzer')}
              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg"
           >
              <MonitorCheck size={18} />
