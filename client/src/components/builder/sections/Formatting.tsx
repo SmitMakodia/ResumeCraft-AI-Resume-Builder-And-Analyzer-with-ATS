@@ -1,7 +1,6 @@
 import React from 'react';
 import { Formatting, Resume } from '../../../types';
 import { ColorPicker } from '../../ui/ColorPicker';
-import { Button } from '../../ui/Button';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';

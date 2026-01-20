@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { logout } from '../../store/slices/authSlice';
 import { FileText, LogOut, Menu, User, X, MonitorCheck, PenTool } from 'lucide-react';
-import { createResume } from '../../store/slices/resumeSlice';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -15,12 +14,6 @@ export const Navbar: React.FC = () => {
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
-  };
-
-  const handleCreate = async () => {
-    // Quick create action from Navbar
-    // In a real app, might open a modal or go to dashboard first
-    navigate('/dashboard'); 
   };
 
   return (

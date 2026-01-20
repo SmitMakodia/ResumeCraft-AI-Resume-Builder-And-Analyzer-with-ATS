@@ -11,7 +11,6 @@ export const MinimalTemplate: React.FC<TemplateProps> = ({ data, accentColor = '
   const { formatting } = data;
   const sectionSpacing = formatting?.sectionSpacing || 24;
   const itemSpacing = formatting?.itemSpacing || 16;
-  const showIcons = data.personalInfo.showIcons !== false;
 
   const renderSection = (sectionId: string) => {
     switch (sectionId) {

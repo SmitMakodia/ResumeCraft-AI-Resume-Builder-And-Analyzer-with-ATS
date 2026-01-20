@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mail, Phone, MapPin, Linkedin, Globe, Calendar, Briefcase, GraduationCap, Award, Code, Link as LinkIcon, FolderGit2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Briefcase, GraduationCap, Award, Code, Link as LinkIcon, FolderGit2 } from 'lucide-react';
 import { Resume } from '../../types';
 
 interface TemplateProps {

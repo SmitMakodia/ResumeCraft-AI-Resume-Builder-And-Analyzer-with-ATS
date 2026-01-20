@@ -6,7 +6,7 @@ import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
-import { Plus, Trash2, FileText, Edit, MoreVertical } from 'lucide-react';
+import { Plus, Trash2, FileText } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 

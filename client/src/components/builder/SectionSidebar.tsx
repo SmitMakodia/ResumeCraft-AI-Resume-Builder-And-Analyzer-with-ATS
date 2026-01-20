@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User, Briefcase, GraduationCap, Code, FolderGit2, Award, FileText, Palette, MonitorCheck } from 'lucide-react';
+import React from 'react';
+import { User, Briefcase, GraduationCap, Code, FolderGit2, FileText, Palette, MonitorCheck } from 'lucide-react';
 import { cn } from '../ui/Button';
 
 interface Props {

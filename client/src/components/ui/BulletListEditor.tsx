@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Plus, X, GripVertical } from 'lucide-react';
 import { Button } from './Button';
 

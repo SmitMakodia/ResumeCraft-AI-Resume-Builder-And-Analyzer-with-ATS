@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ChromePicker } from 'react-color';
-import { Palette } from 'lucide-react';
 
 interface Props {
   color: string;

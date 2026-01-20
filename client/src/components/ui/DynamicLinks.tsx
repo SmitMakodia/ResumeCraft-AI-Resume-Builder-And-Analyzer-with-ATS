@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Link } from '../../../types';
+import React from 'react';
+import { Link } from '../../types';
 import { Button } from './Button';
 import { Input } from './Input';
-import { Plus, Trash2, Link as LinkIcon } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 interface Props {
   links: Link[];

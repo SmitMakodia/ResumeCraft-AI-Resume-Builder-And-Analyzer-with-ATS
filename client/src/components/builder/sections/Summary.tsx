@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Resume } from '../../../types';
 import { Button } from '../../ui/Button';
 import { Sparkles } from 'lucide-react';
 import api from '../../../lib/axios';

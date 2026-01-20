@@ -94,9 +94,6 @@ export const ProjectsForm: React.FC<Props> = ({ items, onChange }) => {
                       value={proj.tools?.join(', ') || ''}
                       onChange={(e) => {
                         const val = e.target.value;
-                        const toolsArray = val.split(',').map(t => t.trimStart()); // preserve typing flow, trim later or split smart
-                        // Actually, splitting on every keystroke makes it hard to type "Node.js" if user pauses? No, standard comma split is fine.
-                        // Better: just store string in local component state? No, direct update is requested.
                         // I'll split by comma.
                         handleUpdate(proj.id, 'tools', val.split(',')); 
                       }}

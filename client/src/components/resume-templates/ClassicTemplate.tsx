@@ -11,7 +11,6 @@ export const ClassicTemplate: React.FC<TemplateProps> = ({ data, accentColor = '
   const { formatting } = data;
   const sectionSpacing = formatting?.sectionSpacing || 24;
   const itemSpacing = formatting?.itemSpacing || 12;
-  const showIcons = data.personalInfo.showIcons !== false; // Default true
 
   return (
     <div className="w-full h-full min-h-[1100px] flex" style={style}>
