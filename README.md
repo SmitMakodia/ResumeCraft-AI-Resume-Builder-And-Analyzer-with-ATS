@@ -1,5 +1,10 @@
 # AI Resume Builder & Analyzer
 
+## 🌐 Live Demo
+
+👉 **Deployed Application:**  
+🔗 https://resumecraft-smit.vercel.app/
+
 A professional-grade, full-stack resume builder with AI capabilities.
 
 ## Prerequisites
