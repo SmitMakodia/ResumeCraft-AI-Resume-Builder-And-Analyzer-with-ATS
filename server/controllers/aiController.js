@@ -1,18 +1,38 @@
-import ai from '../config/ai.js';
+import getAi from '../config/ai.js';
 import parsePDF from '../utils/pdfParser.cjs';
+
+// Single source of truth for the model, overridable per-deployment.
+// Was hardcoded as "gemini-1.5-flash" in three places; that model has since been retired and now
+// returns 404 "not found for API version v1main", which failed every AI request. Verified
+// 2026-07-26: gemini-1.5-flash -> 404, gemini-2.5-flash -> 200.
+// ponytail: pinned to a specific version rather than the `gemini-flash-latest` alias, so a
+// provider-side model change cannot silently alter output. Bump deliberately.
+const MODEL = process.env.OPENAI_MODEL || 'gemini-2.5-flash';
 
 const cleanJson = (text) => {
   if (!text) return '{}';
   return text.replace(/```json/g, '').replace(/```/g, '').trim();
 };
 
-export const enhanceProfessionalSummary = async (req, res) => {
+// The model is instructed to return this shape, but it is a language model, not a contract.
+// Validate structurally before trusting it. Checks presence and type — an earlier `!analysis.score`
+// test rejected a legitimate score of 0 as "invalid structure".
+export const isValidAnalysis = (analysis) => {
+  if (!analysis || typeof analysis !== 'object') return false;
+  if (typeof analysis.score !== 'number' || Number.isNaN(analysis.score)) return false;
+  if (analysis.score < 0 || analysis.score > 100) return false;
+  if (!analysis.categories || typeof analysis.categories !== 'object') return false;
+  if (!analysis.keywords || typeof analysis.keywords !== 'object') return false;
+  return ['missing', 'present'].every((k) => Array.isArray(analysis.keywords[k]));
+};
+
+export const enhanceProfessionalSummary = async (req, res, next) => {
   const { currentSummary } = req.body;
   if (!currentSummary) return res.status(400).json({ message: 'Content is required' });
 
   try {
-    const completion = await ai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gemini-1.5-flash",
+    const completion = await getAi().chat.completions.create({
+      model: MODEL,
       messages: [
         {
           role: "system",
@@ -25,11 +45,13 @@ export const enhanceProfessionalSummary = async (req, res) => {
     res.json({ enhancedContent: completion.choices[0].message.content });
   } catch (error) {
     console.error('Summary Enhance Error:', error);
-    res.status(500).json({ message: 'AI Enhancement failed' });
+    // 503 when the provider is unconfigured, otherwise a generic failure.
+    if (error.status === 503) return next(error);
+    res.status(502).json({ message: 'AI enhancement is temporarily unavailable.' });
   }
 };
 
-export const enhanceJobDescription = async (req, res) => {
+export const enhanceJobDescription = async (req, res, next) => {
   const { description, role, company } = req.body;
   const inputDesc = Array.isArray(description) ? description.join('\n') : description;
 
@@ -41,8 +63,8 @@ export const enhanceJobDescription = async (req, res) => {
     Return the result as a JSON array of strings, where each string is a bullet point.
     Example: ["Increased sales by 20%", "Managed team of 5"]`;
 
-    const completion = await ai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gemini-1.5-flash",
+    const completion = await getAi().chat.completions.create({
+      model: MODEL,
       messages: [
         { role: "system", content: "You are an expert resume writer. Output ONLY JSON." },
         { role: "user", content: `${prompt}\n\n${inputDesc}` }
@@ -50,14 +72,20 @@ export const enhanceJobDescription = async (req, res) => {
     });
 
     const enhancedContent = JSON.parse(cleanJson(completion.choices[0].message.content));
+    // The model is told to return a JSON array of bullet strings; the client assigns the result
+    // straight into `description`, so reject anything that is not that shape.
+    if (!Array.isArray(enhancedContent) || !enhancedContent.every((b) => typeof b === 'string')) {
+      return res.status(502).json({ message: 'AI returned an unexpected format. Please try again.' });
+    }
     res.json({ enhancedContent });
   } catch (error) {
     console.error('Job Enhance Error:', error);
-    res.status(500).json({ message: 'AI Enhancement failed' });
+    if (error.status === 503) return next(error);
+    res.status(502).json({ message: 'AI enhancement is temporarily unavailable.' });
   }
 };
 
-export const analyzeResume = async (req, res) => {
+export const analyzeResume = async (req, res, next) => {
   try {
     const { jobDescription } = req.body;
     let resumeText = '';
@@ -153,8 +181,8 @@ IMPORTANT:
 
     console.log('Sending to Gemini for ATS analysis...');
     
-    const completion = await ai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gemini-1.5-flash",
+    const completion = await getAi().chat.completions.create({
+      model: MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         {
@@ -170,12 +198,11 @@ IMPORTANT:
 
     try {
       const analysis = JSON.parse(cleanJson(responseContent));
-      
-      // Validate the response structure
-      if (!analysis.score || !analysis.categories || !analysis.keywords) {
+
+      if (!isValidAnalysis(analysis)) {
         throw new Error('Invalid response structure from AI');
       }
-      
+
       console.log('ATS Analysis completed successfully. Score:', analysis.score);
       res.json(analysis);
       
@@ -189,8 +216,9 @@ IMPORTANT:
     }
 
   } catch (error) {
+    // Was interpolating the raw provider error into the response body, which could surface
+    // upstream request details to the client. Log it server-side; hand a clean status outward.
     console.error('Analysis Error:', error);
-    const msg = error.response ? JSON.stringify(error.response.data) : error.message;
-    res.status(500).json({ message: 'Analysis failed: ' + msg });
+    next(error);
   }
 };

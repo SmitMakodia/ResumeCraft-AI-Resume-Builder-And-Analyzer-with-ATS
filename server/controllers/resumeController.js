@@ -1,5 +1,5 @@
 import Resume from '../models/Resume.js';
-import imagekit from '../config/imagekit.js';
+import getImagekit from '../config/imagekit.js';
 
 export const createResume = async (req, res) => {
   try {
@@ -81,7 +81,7 @@ export const updateResume = async (req, res) => {
         : { pre: 'w-400,h-400,fo-face,z-2' };
 
       try {
-        const uploadResponse = await imagekit.upload({
+        const uploadResponse = await getImagekit().upload({
           file: req.file.buffer,
           fileName: `resume-${Date.now()}-${req.file.originalname}`,
           folder: '/resumes',
