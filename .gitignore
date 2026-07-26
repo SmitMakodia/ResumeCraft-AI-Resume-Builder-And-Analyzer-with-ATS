@@ -27,3 +27,9 @@ Thumbs.db
 .vscode/
 docs/
 package-lock.json
+
+# Proof-of-work submission package — kept local, not published
+rework-proof/
+
+# TypeScript build artifacts emitted by `tsc -b`
+*.tsbuildinfo

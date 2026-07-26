@@ -1,8 +1,11 @@
 # ResumeCraft - AI-Powered Resume Builder & ATS Analyzer
 
-**Live URL:** [https://resumecraft-smit.vercel.app/](https://resumecraft-smit.vercel.app/)  
-**Repository:** [GitHub Link]  
-**Status:** Production / Live  
+**Live URL (frontend):** [https://resumecraft-smit.vercel.app/](https://resumecraft-smit.vercel.app/)  
+**Repository:** [https://github.com/SmitMakodia/ResumeCraft-AI-Resume-Builder-And-Analyzer-with-ATS](https://github.com/SmitMakodia/ResumeCraft-AI-Resume-Builder-And-Analyzer-with-ATS)  
+**Status (verified 2026-07-26):** Frontend deployed on Vercel and serving. API deployed on Render
+but currently unreachable — the MongoDB Atlas cluster it references no longer resolves, so the
+hosted demo cannot authenticate or analyse until a new cluster is provisioned. Runs fully when
+configured locally.  
 
 ## 1. Project Overview
 ResumeCraft is a professional-grade, full-stack web application designed to bridge the gap between job seekers and Applicant Tracking Systems (ATS). Unlike standard text editors, ResumeCraft treats a resume as structured data, allowing users to build, format, and optimize their CVs dynamically. The core differentiator is the integrated **ATS Analyzer**, which uses Generative AI (Google Gemini) to score a resume against a specific job description, providing actionable feedback on keywords, tone, and structure.
@@ -25,10 +28,12 @@ ResumeCraft is a professional-grade, full-stack web application designed to brid
 *   **Runtime:** Node.js
 *   **Framework:** Express.js
 *   **Database:** MongoDB Atlas (Mongoose ODM)
-*   **AI Engine:** Google Gemini 1.5 Flash (via OpenAI SDK compatibility layer)
-*   **File Processing:** `pdf-parse` (Custom CJS Utility wrapper) for extracting text from PDFs.
+*   **AI Engine:** Google Gemini (`gemini-2.5-flash` default, overridable via `OPENAI_MODEL`) via the OpenAI SDK compatibility layer
+*   **File Processing:** `pdf2json`, wrapped in a CommonJS isolation module (`server/utils/pdfParser.cjs`) for extracting text from PDFs
 *   **Storage:** ImageKit (for User Profile Photos)
-*   **Authentication:** JWT (JSON Web Tokens) with Bcrypt password hashing.
+*   **Authentication:** JWT (JSON Web Tokens, 30-day expiry) with Bcrypt password hashing
+*   **Abuse control:** `express-rate-limit` on `/api/auth/*` (20 per 15 min) and `/api/ai/*` (30 per 15 min)
+*   **Resilience:** database connection retries with capped backoff; the HTTP server stays up during a database outage and `/health` reports both states
 
 ### **Deployment Pipeline**
 *   **Frontend:** Vercel (Edge Network deployment, SPA Rewrite rules configured).
@@ -69,8 +74,8 @@ ResumeCraft is a professional-grade, full-stack web application designed to brid
 ## 4. Challenges & Solutions
 
 ### **Challenge 1: PDF Parsing in Node.js ESM**
-*   **Issue:** The `pdf-parse` library is a CommonJS module, which caused "is not a function" errors in our ES Module backend.
-*   **Solution:** Created a dedicated isolation layer (`server/utils/pdfParser.cjs`) using `require` syntax and imported it into the ESM controller using a custom utility pattern.
+*   **Issue:** The PDF text-extraction library (`pdf2json`) is a CommonJS module, which caused "is not a function" errors in our ES Module backend.
+*   **Solution:** Created a dedicated isolation layer (`server/utils/pdfParser.cjs`) using `require` syntax and imported it into the ESM controller. `pdf2json` signals completion via events rather than returning a promise, so the wrapper adapts it to a promise and enforces a 20-second timeout — otherwise a malformed PDF could leave the request hanging indefinitely.
 
 ### **Challenge 2: Infinite Preview vs. Fixed Page Size**
 *   **Issue:** HTML content grows infinitely, but resumes need to fit on physical paper (A4).
@@ -80,14 +85,24 @@ ResumeCraft is a professional-grade, full-stack web application designed to brid
 *   **Issue:** Keeping the local form state, Redux store, and Database in sync without excessive API calls.
 *   **Solution:** Implemented a local state buffer for immediate UI feedback (typing speed) and a manual "Save" trigger to persist to MongoDB. Used `useEffect` hooks to hydrate local state from Redux only on initial load to prevent overwriting user changes.
 
+### **Challenge 4: Trusting Structured Output From a Language Model**
+*   **Issue:** The ATS analysis depends on the model returning a precise JSON shape, but a language model is not a contract. It may wrap output in Markdown code fences, or return a shape the UI cannot render — and `AnalysisResult.tsx` reads nested fields directly, so a missing key throws.
+*   **Solution:** Strip code fences before parsing, then validate the parsed object structurally (`isValidAnalysis`) before returning it: score must be a number within 0–100, `categories` must be an object, and both keyword lists must be arrays. Malformed output yields a clean error instead of a broken screen. An earlier truthiness check (`!analysis.score`) rejected a legitimate score of **0** — the single most important score to be able to show a user — which is now covered by a regression test.
+
+### **Challenge 5: A Database Outage Taking Down the Whole API**
+*   **Issue:** `connectDB()` originally called `process.exit(1)` when MongoDB was unreachable. Because the connection is attempted asynchronously just after the HTTP listener binds, the process would report "Server running on port N" and then die milliseconds later. On a managed host this becomes a restart loop, and the platform router — having no healthy instance — leaves every request hanging with **zero bytes** rather than returning an error, which is far harder to diagnose than a plain 500.
+*   **Solution:** Retry the connection with capped backoff (1s → 2s → 5s → 10s → 30s) and never exit. The HTTP server stays up, `GET /health` reports process liveness and database state independently, and database-backed routes fail fast with `503` instead of waiting out the driver's server-selection timeout. Verified: with an unreachable cluster, `/health` answers in ~5 ms and `/api/resumes` returns 503 in ~1 ms.
+
 ---
 
 ## 5. Future Implementations (Roadmap)
 
-1.  **Multiple Resumes Versioning:** Allow users to clone resumes to target different industries (e.g., "Frontend Resume" vs "Backend Resume").
+1.  **Resume Cloning:** Duplicate an existing resume to target a different industry (e.g. "Frontend Resume" vs "Backend Resume"). *Note: holding multiple separate resumes per account is already implemented; only one-click cloning is outstanding.*
 2.  **Cover Letter Generator:** Use the Resume + Job Description to generate a tailored cover letter.
-3.  **Social Sharing:** A public "View Only" link for users to share their resume directly with recruiters.
+3.  **Social Sharing — share link outstanding:** publishing already works end to end (Public/Private toggle in the builder toolbar plus `GET /api/resumes/public/:id`). What is missing is a UI that displays and copies the resulting share URL, so a user can publish a resume but has no in-app way to get its link.
 4.  **Analytics:** Track how many times a public resume link has been opened.
+5.  **Content-measured page breaks:** the preview currently draws page-break markers at fixed intervals rather than measuring rendered content height.
+6.  **CI pipeline:** the smoke test suite (`cd server && npm test`) runs locally; it is not yet wired to GitHub Actions.
 
 ## 6. Installation & Setup
 
@@ -98,16 +113,18 @@ ResumeCraft is a professional-grade, full-stack web application designed to brid
 *   ImageKit API Keys
 
 ### **Steps**
-1.  **Clone Repo:** `git clone [repo_url]`
+1.  **Clone Repo:** `git clone https://github.com/SmitMakodia/ResumeCraft-AI-Resume-Builder-And-Analyzer-with-ATS.git`
 2.  **Backend:**
     *   `cd server`
     *   `npm install`
-    *   Create `.env` (MONGO_URI, JWT_SECRET, OPENAI_API_KEY...)
+    *   `cp .env.example .env`, then fill in your own values (`.env` is gitignored and never committed; `.env.example` documents every variable)
     *   `npm start`
+    *   `npm test` — 7 smoke tests, no database or API keys required
 3.  **Frontend:**
     *   `cd client`
     *   `npm install`
     *   `npm run dev`
+    *   Set `VITE_API_URL` if the API is not at `http://localhost:5000/api`
 
 ---
 
